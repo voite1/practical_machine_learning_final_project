@@ -1,0 +1,210 @@
+---
+title: "Practical Machine Learning - Final Project"
+author: "Aleksey Kramer"
+date: "February 6, 2016"
+output: word_document
+---
+
+### Assignment
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+
+#### Data
+
+The training data for this project are available here:
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+#### The test data are available here:
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+The data for this project come from this source: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har). If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+#### What you should submit
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+#### Final Project Steps
+
+1. Load the *testing* and *training* data from online repositories supplied for the assignment
+2. Using nearZeroVar function to remove sparse columns from the *testing* and *training* data sets
+3. Removing the columns containing NA only from both, *training* and *testing* data set
+4. Removing the last column from the *testing* data set (Result ID) and replacing it with a column called *classe* supplying the same levels of factors and populating the column with dummy data. This column would never be used, but is required for the random forest algorithm to be there.
+5. Removing columns 1 through 6 from both *training* and *testing* data sets to assure that there are no discrepancies exist between *training* and *testing* data sets: factor levels are the same and classes of columns are the same.
+6. Coercing classes for all fields between *training* and *testing* data frames to be the same, thus, at this stage, making *training* and *testing* data sets supplied for the assignment to be processed identically and having identical data types, factors, classes, and etc. between the data sets.
+7. Sub splitting training dataset supplied for the assignment into *my_training* and *my_testing* data sets to assure that cross-validation requirement for the assignment is addressed.
+8. Train the treeFit model using *my_training* data set (classification tree) and run predictions using *my_testing* data set. The accuracy of the model is in low seventy percent.
+9. Train the rfFit model using *my_training* data set (random forest algorythm) and run predictions using *my_testing* data set. The accuracy of the mode is better than 99%. Thus, rfFit should be used for prediction on the *testing* data set supplied for the assignment.
+10. Calculate prediction using rfFit model build using *my_training* data set and *testing* data set supplied for the assignment. Print out results. Use the results to populate the quiz.
+11. Out of sample erro was calculated using *my_testing* data set instead of *testing* data set. The problem was that *classe* column was not provided as part of the data set, but I used *classe* variable. The general principle of calculating out of sample error would be exaclty the same but using *testing* data set provided for the assignment.
+
+#### Code and explanations
+
+Load librarires and set working directory
+
+```{r load_libraries, results="hide"}
+library(caret)
+library(rpart)
+library(randomForest)
+
+set.seed(212121)
+```
+
+Download data files if not already downloaded
+
+```{r download_data_files}
+# Set appropriate working directory
+# setwd('C:\\Users\\db345c\\Desktop\\Practical Machine Learning\\Final_Project')
+setwd('C:\\Users\\Aleksey\\Documents\\School\\coursera\\Practical_Machine_Learning\\Final_Project')
+
+# Check if the files exist locally, if not - download
+training.url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testing.url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+if(!file.exists("pml-training.csv")) {
+    download.file(training.url, "pml-training.csv")
+}
+
+if(!file.exists("pml-testing.csv")){
+    download.file(testing.url, "pml-testing.csv")
+}
+```
+
+Loading data files into memory
+
+```{r load_files}
+# Load training and testing data sets
+training <- read.csv("pml-training.csv", na.strings = c("NA","", "#DIV/0!"))
+testing <- read.csv("pml-testing.csv", na.strings = c("NA","", "#DIV/0!"))
+
+# cleanup unused variables
+rm(training.url, testing.url)
+```
+
+Prepare the data to be consumed by the prediction algorythms
+
+```{r clense_data_files}
+# identifying sparsely populated columns using nearZeroVar function
+# from testing and training data sets
+# Identical changes need to be made to testing and training data sets
+to_skip <- nearZeroVar(training)
+training <- training[, -to_skip]
+testing <- testing[, -to_skip]
+
+# cleanup unused variables
+rm(to_skip)
+
+# removing columns containing NA's only
+# Identical changes need to be made to testing and training data sets
+col_lst <- colSums(is.na(training)) == 0
+training <- training[, col_lst]
+testing <- testing[, col_lst]
+
+# adjusting data - remove column 59 from the testing data (not needed)
+testing <- testing[, -c(59)]
+
+# creating simple dummy data with 5 levels identical to those in training data set
+# iterate throug the data frame using sample function to select a sample of size 1 from
+# vector called levels. The classe variable was not provided as part of the testing
+# data set, this is why I have to add a dummy classe variable.
+train_levels <- levels(training$classe)
+v <- vector(mode="character", length=0)
+for (i in testing[,1]) {
+  x <- sample(train_levels, size=1, replace = TRUE)
+  v <- c(v, x)
+}
+
+# apppending dummy data (as factor) with the same factors and number of factors as in the training data
+# as well as with the same name (simply for convenience)
+testing$classe <- as.factor(v)
+
+# Remove remove index, factor, and several date columns from training and testing data set
+testing <- testing[, -c(1:6)]
+training <- training[, -c(1:6)]
+
+# cleanup unused variables
+rm(col_lst, v, train_levels, x)
+```
+
+Explore data frames to identify discrepancies in field's class types
+
+```{r compare_dataframes}
+# Explore training and testing data to assure that all fields in both training and testing
+# data sets have identical classes for each of the fields.
+str(training)
+str(testing)
+```
+
+Coherce field classes to be the same between two data frames: *testing* and *training*
+
+```{r coherce_field_classes}
+# coherce training and testing data to the same data types and fix factors in testing
+for (i in 1:length(testing)) {
+  for(j in 1:length(training)) {
+    if( length(grep(names(training[i]), names(testing)[j])) == 1)  {
+      class(testing[j]) <- class(training[i])
+    }      
+  }      
+}
+
+# fix coersion that failed in previous step (this is required!!!)
+for (i in 1:length(testing)) {
+  if (class(training[, i]) != class(testing[, i])) {
+    ### try fixing coersion, so testing and training data frames match
+    class(training[, i]) <- class(testing[, i])
+  }
+}
+```
+
+Split *training* data set into *my_training* and *my_testing* data sets.
+
+```{r splt_data}
+# Partition data into two two sets - training and testing
+# Identical changes need to be made to testing and training data sets
+inTrain <- createDataPartition(y=training$classe, p=0.6, list=FALSE)
+my_training <- training[inTrain,]
+my_testing <- training[-inTrain,]
+
+# cleanup unused variables
+rm(inTrain, i, j)
+```
+
+Generate tree and run prediction. Accuracy is quite low.
+
+```{r build_tree}
+# Build decision tree model and run predictions
+set.seed(212121)
+treeFit <- rpart(classe ~., data=my_training, method="class")
+treePredicted <- predict(treeFit, my_testing, type="class")
+# print confusion matrix for treePredicted vs. my_testing$classe
+confusionMatrix(treePredicted, my_testing$classe)
+```
+
+Generate Random Forest and run prediction.  Accuracy is more than 99%
+
+```{r build_random_forest}
+rfFit <- randomForest(classe ~., data=my_training)
+rfPredicted <- predict(rfFit, my_testing, type="class")
+confusionMatrix(rfPredicted, my_testing$classe)
+```
+
+Printing predictions for the test data set supplied for the final project
+
+```{r print_predicted_results}
+# printing the answer for the quiz
+finalAnswer <- predict(rfFit, testing, type="class")
+print(finalAnswer)
+```
+
+Caclulating out of sample eror
+
+```{r out_of_sample_error}
+# The classe variable was not provided as a part of the testing data set supplied
+# for this assignment, but it was recommended to use classe variable to predict on.
+# The principle of calculating out of sample error would be the same, but with
+# testing data set (if classe variable was provied). I used my_training data set.
+# I expect out of sample error to be slightly larger by a percent or two.
+error_rate = sum((my_testing$classe != rfPredicted) / length(rfPredicted))
+print(paste0("The out of sample error rate is: ", error_rate))
+```
