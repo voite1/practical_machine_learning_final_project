@@ -2,7 +2,7 @@
 title: "Practical Machine Learning - Final Project"
 author: "Aleksey Kramer"
 date: "February 6, 2016"
-output: word_document
+output: html_document
 ---
 
 ### Assignment
