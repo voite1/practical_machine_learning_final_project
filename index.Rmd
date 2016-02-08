@@ -207,5 +207,6 @@ Caclulating out of sample eror
 # I used my_training data set to caclulate in sample error.
 # I expect out of sample error to be slightly larger by a percent or two.
 error_rate = sum((my_testing$classe != rfPredicted) / length(rfPredicted))
-print(paste0("The out of sample error rate is: ", error_rate))
+print(paste0("The in-sample error rate is: ", error_rate))
+print(paste0("The out of sample error rate should be grater than: ", error_rate))
 ```

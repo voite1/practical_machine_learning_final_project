@@ -400,12 +400,15 @@ print(finalAnswer)</code></pre>
 <p>Caclulating out of sample eror</p>
 <pre class="r"><code># The classe variable was not provided as a part of the testing data set supplied
 # for this assignment, but it was recommended to use classe variable to predict on.
-# The principle of calculating out of sample error would be the same, but with
-# testing data set (if classe variable was provied). I used my_training data set.
+# The principle of calculating out of sample error would be the same as calculating 
+# in sample error, but with testing data set (if classe variable was provied). 
+# I used my_training data set to caclulate in sample error.
 # I expect out of sample error to be slightly larger by a percent or two.
 error_rate = sum((my_testing$classe != rfPredicted) / length(rfPredicted))
-print(paste0(&quot;The out of sample error rate is: &quot;, error_rate))</code></pre>
-<pre><code>## [1] &quot;The out of sample error rate is: 0.00522559265867958&quot;</code></pre>
+print(paste0(&quot;The in-sample error rate is: &quot;, error_rate))</code></pre>
+<pre><code>## [1] &quot;The in-sample error rate is: 0.00522559265867958&quot;</code></pre>
+<pre class="r"><code>print(paste0(&quot;The out of sample error rate should be grater than: &quot;, error_rate))</code></pre>
+<pre><code>## [1] &quot;The out of sample error rate should be grater than: 0.00522559265867958&quot;</code></pre>
 </div>
 </div>
 
